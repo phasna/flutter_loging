@@ -9,6 +9,28 @@ hachés en **bcrypt** et renvoie le profil de l'utilisateur en JSON.
 
 ---
 
+## ⚡ Vérifier rapidement (correcteur)
+
+Prérequis : PHP ≥ 8 et Flutter installés.
+
+```bash
+git clone https://github.com/phasna/flutter_loging.git && cd flutter_loging
+php -S 127.0.0.1:8000 -t api     # Terminal 1 : lance l'API (option B)
+flutter run                      # Terminal 2 : lance l'app (simulateur iOS)
+```
+Se connecter avec `jean@example.com` / `1234`. Pour voir le message « Houston », se tromper 3 fois de mot de passe.
+
+Tester l'API seule :
+```bash
+curl -X POST http://127.0.0.1:8000/login.php -H "X-Flutter-Student: M2-2026" \
+  -d "email=jean@example.com&password=1234"
+```
+
+> L'application appelle **notre API** (`api/login.php`) et non celle du professeur.
+> Émulateur Android : `flutter run --dart-define=API_URL=http://10.0.2.2:8000/login.php`
+
+---
+
 ## Identifiants de test
 
 | Email               | Mot de passe | Nom          | Rôle               |
