@@ -166,7 +166,7 @@ flutter test
 
 Tablette (design réactif) :
 
-<img src="docs/screenshots/05-ipad.png" width="400">
+<img src="docs/screenshots/tablette.png" width="400">
 
 ### Démo en HTTPS (Cloudflare Tunnel)
 
