@@ -3,6 +3,9 @@ enum AuthErrorType {
   /// Email ou mot de passe incorrect (réponse {"status":400}).
   invalidCredentials,
 
+  /// Token absent, invalide ou expiré (réponse {"status":401}).
+  unauthorized,
+
   /// Réponse inattendue du serveur (403, 405, 500, JSON invalide...).
   server,
 

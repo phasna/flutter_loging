@@ -1,11 +1,13 @@
 # DS Flutter – Connexion avec authentification via API REST
 
 Application Flutter de connexion (évolution des TP 9.1 / 9.2) : l'authentification locale
-est remplacée par un appel **POST** à une **API REST PHP** qui vérifie les mots de passe
-hachés en **bcrypt** et renvoie le profil de l'utilisateur en JSON.
+est remplacée par des appels **HTTP** à une **API REST PHP** qui vérifie les mots de passe
+hachés en **bcrypt**, renvoie le profil en JSON et délivre un **token signé** utilisé pour
+sécuriser les requêtes suivantes.
 
-**Option choisie : B** – adaptation du script PHP fourni (`api/login_tst_local.original.php`)
-→ `api/login.php`.
+**Option choisie : B** – adaptation du script PHP fourni (`api/login_tst_local.original.php`).
+
+> L'application appelle **notre API** (`api/`) et non celle du professeur.
 
 ---
 
@@ -15,19 +17,20 @@ Prérequis : PHP ≥ 8 et Flutter installés.
 
 ```bash
 git clone https://github.com/phasna/flutter_loging.git && cd flutter_loging
-php -S 127.0.0.1:8000 -t api     # Terminal 1 : lance l'API (option B)
-flutter run                      # Terminal 2 : lance l'app (simulateur iOS)
+php -S 127.0.0.1:8000 -t api api/router.php   # Terminal 1 : lance l'API
+flutter run                                    # Terminal 2 : lance l'app (simulateur iOS)
 ```
-Se connecter avec `jean@example.com` / `1234`. Pour voir le message « Houston », se tromper 3 fois de mot de passe.
+Se connecter avec `jean@example.com` / `1234`. Pour voir « Houston », se tromper 3 fois.
 
 Tester l'API seule :
 ```bash
+# Connexion
 curl -X POST http://127.0.0.1:8000/login.php -H "X-Flutter-Student: M2-2026" \
   -d "email=jean@example.com&password=1234"
+# Route protégée (remplacer <TOKEN> par le token reçu)
+curl http://127.0.0.1:8000/profile.php -H "X-Flutter-Student: M2-2026" \
+  -H "Authorization: Bearer <TOKEN>"
 ```
-
-> L'application appelle **notre API** (`api/login.php`) et non celle du professeur.
-> Émulateur Android : `flutter run --dart-define=API_URL=http://10.0.2.2:8000/login.php`
 
 ---
 
@@ -42,39 +45,55 @@ curl -X POST http://127.0.0.1:8000/login.php -H "X-Flutter-Student: M2-2026" \
 
 ## Fonctionnalités
 
+### Exigences obligatoires
+- **3 tentatives incorrectes → « Houston, nous avons un problème ! »** (boîte de dialogue + bandeau).
+  Le compteur est **remis à zéro après une connexion réussie**. Les erreurs réseau ne comptent pas.
+- **En-tête `X-Flutter-Student: M2-2026`** envoyé à chaque requête (et exigé par l'API → `403` sinon).
+
 ### Application Flutter
 - Formulaire `Form` + `TextFormField` validé (`GlobalKey<FormState>`, `validator`).
-- Appel **POST** avec le package `http` (`async`/`await`), paramètres `email` et `password`.
-- En-tête obligatoire **`X-Flutter-Student: M2-2026`** envoyé à chaque requête.
-- Lecture de la réponse JSON (`status`, `message`, `id`, `firstName`, `lastName`, `email`, `role`, `token`).
-- **3 tentatives incorrectes → « Houston, nous avons un problème ! »**
-  (boîte de dialogue + bandeau). Le compteur est **remis à zéro après une connexion réussie**.
-  Les erreurs réseau ne sont pas comptées comme des tentatives incorrectes.
-- Gestion des erreurs : identifiants faux, serveur injoignable, délai dépassé (10 s), réponse invalide.
-- `CircularProgressIndicator` dans le bouton pendant la connexion (champs désactivés).
-- Design réactif : `SingleChildScrollView` + largeur max (portrait / paysage / tablette).
-- Interface : thème Material 3 clair/sombre, logo animé (fondu + zoom, `Hero` vers le profil),
-  afficher/masquer le mot de passe, bandeau animé du nombre d'échecs.
-- Écran de profil (id, nom, email, rôle, début du token) + déconnexion.
-- Gestion d'état avec un `ChangeNotifier` (`AuthController`) + `ListenableBuilder`.
+- `POST /login.php` avec le package `http` (`async`/`await`), paramètres `email` et `password`.
+- Lecture du JSON (`status`, `message`, `id`, `firstName`, `lastName`, `email`, `role`, `token`).
+- Erreurs gérées : identifiants faux, token invalide (401), serveur injoignable, délai dépassé (10 s),
+  réponse non JSON.
+- **Token** : stocké avec `flutter_secure_storage` (Keychain iOS / Keystore Android), envoyé en
+  `Authorization: Bearer` sur `GET /profile.php` (requête sécurisée), **reconnexion automatique**
+  au démarrage si le token est encore valide, supprimé à la déconnexion.
+- `CircularProgressIndicator` pendant la connexion, au démarrage et lors de la vérification du token.
+- Design réactif : `SingleChildScrollView` + largeur max (testé en 320×568, paysage 568×320, tablette).
+- Interface : thème Material 3 clair/sombre, logo animé (fondu + zoom, `Hero`), transitions,
+  afficher/masquer le mot de passe, bandeau animé des échecs.
+- Gestion d'état : `ChangeNotifier` (`AuthController`) + `ListenableBuilder`.
 
-### API PHP (`api/login.php`)
-- Mots de passe **jamais stockés en clair** : hachés avec `password_hash` (bcrypt, coût 12),
-  vérifiés avec `password_verify` (sel intégré au hash bcrypt).
-- **POST** obligatoire (sinon `405`).
-- En-tête **`X-Flutter-Student: M2-2026`** obligatoire (sinon `403`).
-- Validation des entrées (email valide, longueurs max) → `400`.
-- Accepte les paramètres en `application/x-www-form-urlencoded` ou en JSON.
-- Génère un **token** de session aléatoire (`random_bytes`) en cas de succès.
-- Message d'erreur générique (ne révèle pas si c'est l'email ou le mot de passe qui est faux).
+### API PHP (`api/`)
+| Fichier | Rôle |
+|---|---|
+| `login.php` | `POST` – authentification, renvoie le profil + token |
+| `profile.php` | `GET` – route protégée par `Authorization: Bearer <token>` |
+| `helpers.php` | réponses JSON, contrôles méthode / en-tête, création et vérification des tokens |
+| `users.php` | utilisateurs avec **hash bcrypt** (jamais de mot de passe en clair) |
+| `config.php` | en-tête attendu, durée du token, clé secrète (`TOKEN_SECRET`) |
+| `router.php` | routeur du serveur PHP intégré (n'expose que `login.php` et `profile.php`) |
+| `.htaccess` | même protection sur un hébergement Apache |
+| `login_tst_local.original.php` | script d'origine fourni (référence) |
+
+Sécurité :
+- Mots de passe hachés avec `password_hash` (**bcrypt**, coût 12, **sel intégré**), vérifiés avec `password_verify`.
+- `POST` obligatoire sur le login (`405` sinon), validation des entrées (email valide, longueurs max → `400`).
+- Message d'erreur générique (ne révèle pas si l'email ou le mot de passe est faux).
+- Token **signé HMAC-SHA256**, contenant l'id utilisateur et une **expiration (1 h)** ;
+  toute modification invalide la signature → `401`.
+- Mot de passe transmis dans le corps de la requête (jamais dans l'URL), via **HTTPS** en production.
 
 **Contrat :**
 ```json
-// Succès (HTTP 200)
+// POST /login.php – succès (HTTP 200)
 {"status":200,"message":"Success","id":1,"firstName":"Jean","lastName":"Dupont",
  "email":"jean@example.com","role":2,"token":"…"}
-// Erreur (HTTP 400)
+// POST /login.php – erreur (HTTP 400)
 {"status":400,"message":"Error"}
+// GET /profile.php – token invalide (HTTP 401)
+{"status":401,"message":"Unauthorized"}
 ```
 
 ---
@@ -82,19 +101,18 @@ curl -X POST http://127.0.0.1:8000/login.php -H "X-Flutter-Student: M2-2026" \
 ## Structure du projet
 
 ```
-api/
-  login.php                     API d'authentification adaptée (bcrypt, en-tête, validation)
-  login_tst_local.original.php  script d'origine fourni (référence)
+api/                            API PHP (voir tableau ci-dessus)
 lib/
   main.dart                     point d'entrée
   config/api_config.dart        URL de l'API, en-tête, timeout, nb max d'échecs
   models/                       User, LoginResponse, AuthException
-  services/auth_service.dart    appels HTTP à l'API
+  services/auth_service.dart    appels HTTP (login, profil sécurisé)
+  services/token_storage.dart   stockage sécurisé du token
   state/auth_controller.dart    état : chargement, utilisateur, token, compteur d'échecs
-  screens/                      LoginScreen, ProfileScreen
+  screens/                      StartupScreen, LoginScreen, ProfileScreen
   widgets/                      AppLogo, LoadingButton, AttemptsBanner, ProfileInfoTile
   theme/app_theme.dart          thème Material 3
-test/widget_test.dart           10 tests (service, compteur Houston, interface)
+test/widget_test.dart           17 tests (service, token, compteur Houston, interface, réactivité)
 docs/screenshots/               captures d'écran
 ```
 
@@ -104,33 +122,30 @@ docs/screenshots/               captures d'écran
 
 ### 1. API (PHP ≥ 8)
 ```bash
-php -S 127.0.0.1:8000 -t api
+php -S 127.0.0.1:8000 -t api api/router.php
+# Clé de signature personnalisée (recommandé) :
+TOKEN_SECRET="une-longue-cle-aleatoire" php -S 127.0.0.1:8000 -t api api/router.php
 ```
-Test rapide :
-```bash
-curl -X POST http://127.0.0.1:8000/login.php \
-  -H "X-Flutter-Student: M2-2026" \
-  -d "email=jean@example.com&password=1234"
-```
-
-Générer le hash d'un nouveau mot de passe :
+Générer le hash bcrypt d'un nouveau mot de passe :
 ```bash
 php -r 'echo password_hash("monMotDePasse", PASSWORD_BCRYPT), PHP_EOL;'
 ```
 
-**HTTPS** : en production, déployer `api/login.php` sur un hébergement PHP en HTTPS
-(ou exposer l'API locale en HTTPS, ex. `cloudflared tunnel --url http://127.0.0.1:8000`).
+**HTTPS** – exposer l'API locale en HTTPS avec Cloudflare Tunnel :
+```bash
+cloudflared tunnel --url http://127.0.0.1:8000
+# → https://xxxx.trycloudflare.com
+```
+ou déployer le dossier `api/` sur un hébergement PHP en HTTPS (le `.htaccess` est fourni).
 
 ### 2. Application Flutter
 ```bash
 flutter pub get
-flutter run                                   # API locale http://127.0.0.1:8000/login.php
-flutter run --dart-define=API_URL=https://mon-serveur/login.php   # autre URL (HTTPS)
+flutter run                                                        # API locale
+flutter run --dart-define=API_BASE_URL=https://xxxx.trycloudflare.com   # API en HTTPS
 ```
 - Simulateur iOS : `127.0.0.1` fonctionne directement.
-- Émulateur Android : `--dart-define=API_URL=http://10.0.2.2:8000/login.php`.
-- L'app fonctionne aussi avec l'API du professeur :
-  `--dart-define=API_URL=https://temp.itds.fr/login_tst_local.php`.
+- Émulateur Android : `--dart-define=API_BASE_URL=http://10.0.2.2:8000`.
 
 ### 3. Tests
 ```bash
@@ -141,14 +156,10 @@ flutter test
 
 ## Captures d'écran
 
-| Connexion | Erreur | Houston | Profil |
+| Connexion | Erreur (1/3) | Houston (3/3) | Profil |
 |---|---|---|---|
 | ![](docs/screenshots/01-login.png) | ![](docs/screenshots/02-erreur.png) | ![](docs/screenshots/03-houston.png) | ![](docs/screenshots/04-profil.png) |
 
----
+Tablette (design réactif) :
 
-## Sécurité – notes
-- Le mot de passe est transmis dans le corps de la requête POST (jamais dans l'URL) ;
-  il doit l'être via **HTTPS** en production.
-- Côté serveur, seuls des **hash bcrypt** sont stockés.
-- Le token est conservé en mémoire pendant la session et effacé à la déconnexion.
+<img src="docs/screenshots/05-ipad.png" width="400">

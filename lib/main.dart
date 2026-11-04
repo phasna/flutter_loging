@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/login_screen.dart';
+import 'screens/startup_screen.dart';
 import 'state/auth_controller.dart';
 import 'theme/app_theme.dart';
 
@@ -21,7 +21,7 @@ class LoginApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      home: LoginScreen(controller: controller),
+      home: StartupScreen(controller: controller),
     );
   }
 }

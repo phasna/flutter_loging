@@ -43,7 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
     switch (outcome) {
       case LoginOutcome.success:
         _passwordController.clear();
-        await Navigator.push(
+        // Le profil remplace l'écran de connexion (retour impossible)
+        await Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => ProfileScreen(controller: _auth),

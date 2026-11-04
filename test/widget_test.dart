@@ -8,11 +8,24 @@ import 'package:http/testing.dart';
 import 'package:login_app/main.dart';
 import 'package:login_app/models/auth_exception.dart';
 import 'package:login_app/services/auth_service.dart';
+import 'package:login_app/services/token_storage.dart';
 import 'package:login_app/state/auth_controller.dart';
 
 /// Faux serveur qui imite l'API PHP (jean@example.com / 1234).
+const validToken = 'abcdef1234567890abcdef';
+
 MockClient fakeApi({List<http.Request>? log}) => MockClient((req) async {
       log?.add(req);
+      if (req.method == 'GET') {
+        final ok = req.headers['Authorization'] == 'Bearer $validToken';
+        return http.Response(
+          json.encode(ok
+              ? {'status': 200, 'message': 'Success', 'id': 1, 'firstName': 'Jean',
+                 'lastName': 'Dupont', 'email': 'jean@example.com', 'role': 2}
+              : {'status': 401, 'message': 'Unauthorized'}),
+          ok ? 200 : 401,
+        );
+      }
       final ok = req.bodyFields['email'] == 'jean@example.com' &&
           req.bodyFields['password'] == '1234';
       return http.Response(
@@ -25,7 +38,7 @@ MockClient fakeApi({List<http.Request>? log}) => MockClient((req) async {
                 'lastName': 'Dupont',
                 'email': 'jean@example.com',
                 'role': 2,
-                'token': 'abcdef1234567890abcdef',
+                'token': validToken,
               }
             : {'status': 400, 'message': 'Error'}),
         ok ? 200 : 400,
@@ -33,8 +46,15 @@ MockClient fakeApi({List<http.Request>? log}) => MockClient((req) async {
       );
     });
 
-AuthController controllerWith(http.Client client) =>
-    AuthController(authService: AuthService(client: client, loginUrl: 'https://test/login.php'));
+AuthService serviceWith(http.Client client) => AuthService(
+    client: client,
+    loginUrl: 'https://test/login.php',
+    profileUrl: 'https://test/profile.php');
+
+AuthController controllerWith(http.Client client, {TokenStorage? storage}) =>
+    AuthController(
+        authService: serviceWith(client),
+        tokenStorage: storage ?? MemoryTokenStorage());
 
 Future<void> fillAndSubmit(WidgetTester t, String email, String pass) async {
   await t.enterText(find.widgetWithText(TextFormField, 'Email'), email);
@@ -108,6 +128,40 @@ void main() {
     });
   });
 
+  group('Token', () {
+    test('le token est stocké après login et supprimé au logout', () async {
+      final storage = MemoryTokenStorage();
+      final c = controllerWith(fakeApi(), storage: storage);
+      await c.login('jean@example.com', '1234');
+      expect(await storage.read(), validToken);
+      await c.logout();
+      expect(await storage.read(), isNull);
+    });
+
+    test('requête sécurisée : Authorization Bearer + en-tête obligatoire', () async {
+      final log = <http.Request>[];
+      final user = await serviceWith(fakeApi(log: log)).fetchProfile(validToken);
+      expect(user.fullName, 'Jean Dupont');
+      expect(log.single.method, 'GET');
+      expect(log.single.headers['Authorization'], 'Bearer $validToken');
+      expect(log.single.headers['X-Flutter-Student'], 'M2-2026');
+    });
+
+    test('restoreSession : reconnexion avec un token valide', () async {
+      final storage = MemoryTokenStorage()..write(validToken);
+      final c = controllerWith(fakeApi(), storage: storage);
+      expect(await c.restoreSession(), isTrue);
+      expect(c.user?.firstName, 'Jean');
+    });
+
+    test('restoreSession : token invalide supprimé', () async {
+      final storage = MemoryTokenStorage()..write('faux-token');
+      final c = controllerWith(fakeApi(), storage: storage);
+      expect(await c.restoreSession(), isFalse);
+      expect(await storage.read(), isNull);
+    });
+  });
+
   group('Interface', () {
     testWidgets('validation des champs', (t) async {
       await t.pumpWidget(LoginApp(controller: controllerWith(fakeApi())));
@@ -131,12 +185,26 @@ void main() {
       expect(find.text('Houston, nous avons un problème !'), findsWidgets);
     });
 
+    for (final size in const [Size(320, 568), Size(568, 320), Size(1024, 768)]) {
+      testWidgets('design réactif sans débordement : $size', (t) async {
+        t.view.physicalSize = size;
+        t.view.devicePixelRatio = 1;
+        addTearDown(t.view.reset);
+        await t.pumpWidget(LoginApp(controller: controllerWith(fakeApi())));
+        await t.pumpAndSettle();
+        await t.tap(find.text('Se connecter'));
+        await t.pumpAndSettle(); // messages de validation affichés
+        expect(t.takeException(), isNull);
+      });
+    }
+
     testWidgets('connexion réussie -> profil -> déconnexion', (t) async {
       await t.pumpWidget(LoginApp(controller: controllerWith(fakeApi())));
       await t.pumpAndSettle();
       await fillAndSubmit(t, 'jean@example.com', '1234');
       expect(find.text('Jean Dupont'), findsOneWidget);
       expect(find.text('Utilisateur (2)'), findsOneWidget);
+      expect(find.text('Token vérifié par l\'API'), findsOneWidget);
       await t.ensureVisible(find.text('Se déconnecter'));
       await t.pumpAndSettle();
       await t.tap(find.text('Se déconnecter'));
