@@ -130,3 +130,4 @@ flutter test
   il doit l'être via **HTTPS** en production.
 - Côté serveur, seuls des **hash bcrypt** sont stockés.
 - Le token est conservé en mémoire pendant la session et effacé à la déconnexion.
+# flutter_loging
