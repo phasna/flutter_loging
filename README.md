@@ -156,9 +156,13 @@ flutter test
 
 ## Captures d'écran
 
-| Connexion | Erreur (1/3) | Houston (3/3) | Profil |
-|---|---|---|---|
-| ![](docs/screenshots/01-login.png) | ![](docs/screenshots/02-erreur.png) | ![](docs/screenshots/03-houston.png) | ![](docs/screenshots/04-profil.png) |
+| Connexion | Erreur (1/3) | Houston (3/3) |
+|---|---|---|
+| ![](docs/screenshots/01-login.png) | ![](docs/screenshots/erreur.png) | ![](docs/screenshots/Houstons.png) |
+
+| Profil | Token vérifié par l'API |
+|---|---|
+| ![](docs/screenshots/Profile.png) | ![](docs/screenshots/Token.png) |
 
 Tablette (design réactif) :
 
