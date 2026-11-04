@@ -64,6 +64,17 @@ Future<void> fillAndSubmit(WidgetTester t, String email, String pass) async {
 }
 
 void main() {
+  // Désactive les animations en boucle (fond animé) pour que pumpAndSettle termine.
+  setUp(() {
+    TestWidgetsFlutterBinding.ensureInitialized()
+        .platformDispatcher
+        .accessibilityFeaturesTestValue = FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher
+        .clearAccessibilityFeaturesTestValue();
+  });
+
   group('AuthService', () {
     test('envoie POST + en-tête X-Flutter-Student + email/password', () async {
       final log = <http.Request>[];

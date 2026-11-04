@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const Color _seed = Colors.indigo;
+  static const Color _seed = Color(0xFF4F46E5);
 
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
@@ -17,8 +17,20 @@ class AppTheme {
       colorScheme: scheme,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -30,6 +42,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
+      appBarTheme: const AppBarTheme(centerTitle: true),
       cardTheme: CardThemeData(
         elevation: 0,
         color: scheme.surfaceContainerLow,

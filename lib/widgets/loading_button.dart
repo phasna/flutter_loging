@@ -37,7 +37,11 @@ class LoadingButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[Icon(icon), const SizedBox(width: 8)],
-                    Text(label, style: const TextStyle(fontSize: 16)),
+                    Flexible(
+                      child: Text(label,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 16)),
+                    ),
                   ],
                 ),
         ),

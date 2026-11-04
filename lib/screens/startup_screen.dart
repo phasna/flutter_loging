@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../state/auth_controller.dart';
 import '../widgets/app_logo.dart';
+import '../widgets/gradient_background.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 
@@ -42,14 +43,16 @@ class _StartupScreenState extends State<StartupScreen> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppLogo(),
-            SizedBox(height: 32),
-            CircularProgressIndicator(),
-          ],
+      body: GradientBackground(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppLogo(onGradient: true),
+              SizedBox(height: 32),
+              CircularProgressIndicator(color: Colors.white),
+            ],
+          ),
         ),
       ),
     );
