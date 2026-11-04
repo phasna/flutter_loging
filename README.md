@@ -184,7 +184,7 @@ POST login.php (mauvais mot de passe)       → {"status":400,"message":"Error"}
 Capture ci-dessous : au redémarrage de l'app, la session est **restaurée automatiquement** à partir
 du token stocké dans `flutter_secure_storage`, puis le token est **vérifié par l'API en HTTPS**.
 
-<img src="docs/screenshots/06-https-session-restauree.png" width="300">
+<img src="docs/screenshots/https-session.png" width="300">
 
 > L'adresse `trycloudflare.com` est temporaire (elle change à chaque lancement du tunnel) :
 > relancer `cloudflared` et utiliser la nouvelle adresse pour reproduire.
