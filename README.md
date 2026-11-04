@@ -163,3 +163,24 @@ flutter test
 Tablette (design réactif) :
 
 <img src="docs/screenshots/05-ipad.png" width="400">
+
+### Démo en HTTPS (Cloudflare Tunnel)
+
+L'API locale a été exposée en HTTPS (`cloudflared tunnel --url http://127.0.0.1:8000`) et
+l'application lancée avec :
+```bash
+flutter run --dart-define=API_BASE_URL=https://samuel-fwd-federal-median.trycloudflare.com
+```
+Résultat vérifié le 04/11/2026 :
+```text
+POST https://…trycloudflare.com/login.php   → {"status":200,"message":"Success","id":1,"firstName":"Jean",…,"token":"…"}
+GET  https://…trycloudflare.com/profile.php → {"status":200,"message":"Success","id":1,…}   (Authorization: Bearer)
+POST login.php (mauvais mot de passe)       → {"status":400,"message":"Error"}
+```
+Capture ci-dessous : au redémarrage de l'app, la session est **restaurée automatiquement** à partir
+du token stocké dans `flutter_secure_storage`, puis le token est **vérifié par l'API en HTTPS**.
+
+<img src="docs/screenshots/06-https-session-restauree.png" width="300">
+
+> L'adresse `trycloudflare.com` est temporaire (elle change à chaque lancement du tunnel) :
+> relancer `cloudflared` et utiliser la nouvelle adresse pour reproduire.
